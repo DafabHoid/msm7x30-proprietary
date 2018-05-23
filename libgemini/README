@@ -1,0 +1,17 @@
+MSM gemini (JPEG hardware encoder) userspace library
+Copyright (C) 2018 DafabHoid
+
+This library is a open source replacement for the proprietary libgemini.so,
+which can be found on many older Smartphone systems running Android (including
+the Samsung Galaxy S Plus), that use the MSM gemini JPEG hardware encoder found
+on some SoCs and its kernel driver.
+
+This library is meant to work as an drop-in replacement for the original
+closed-source variant and should also be ABI-compatible in a way that allows
+existing proprietary binary libraries and executables to work with this library
+without any difference, until all existing proprietary binary libraries and
+executables have been replaced with open source code.
+
+Please excuse the lack of documentation and code quality, as much of the
+function interfaces and code have been inspired by the proprietary binary, which
+lacks debugging information, header files and documentation.
