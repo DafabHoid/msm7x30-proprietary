@@ -1,9 +1,10 @@
 #include "jpeg_buffer.h"
 #include "os.h"
+#include "errors.h"
 
-#define CHECK_VALID(buf) if (!buf || !buf->isValid) return 1
+#define CHECK_VALID(buf) if (!buf || !buf->isValid) return INVALID_ARGUMENT
 #define CHECK_HAS_ADDRESS(buf) CHECK_VALID(buf);\
-	if (buf->address == NULL) return 1
+	if (buf->address == NULL) return INVALID_ARGUMENT
 
 int jpeg_buffer_get_pmem_fd(struct jpeg_buffer* buf)
 {
@@ -17,45 +18,45 @@ int jpeg_buffer_get_addr(struct jpeg_buffer* buf, void** addrOut)
 {
 	CHECK_HAS_ADDRESS(buf);
 	if (!addrOut)
-		return 1;
+		return INVALID_ARGUMENT;
 	*addrOut = buf->address;
-	return 0;
+	return OK;
 }
 
 int jpeg_buffer_get_max_size(struct jpeg_buffer*, size_t** sizeOut)
 {
 	CHECK_HAS_ADDRESS(buf);
 	if (!sizeOut)
-		return 1;
+		return INVALID_ARGUMENT;
 	*sizeOut = buf->capacity;
-	return 0;
+	return OK;
 }
 
 int jpeg_buffer_get_actual_size(struct jpeg_buffer* buf, size_t** sizeOut)
 {
 	CHECK_HAS_ADDRESS(buf);
 	if (!sizeOut)
-		return 1;
+		return INVALID_ARGUMENT;
 	*sizeOut = buf->size;
-	return 0;
+	return OK;
 }
 
 int jpeg_buffer_set_actual_size(struct jpeg_buffer* buf, size_t* size)
 {
 	CHECK_VALID(buf);
 	if (size > buf->capacity)
-		return 1;
+		return INVALID_ARGUMENT;
 	buf->size = size;
-	return 0;
+	return OK;
 }
 
 int jpeg_buffer_set_start_offset(struct jpeg_buffer* buf, size_t offset)
 {
 	CHECK_VALID(buf);
 	if (offset > buf->capacity)
-		return 1;
+		return INVALID_ARGUMENT;
 	buf->offset = offset;
-	return 0;
+	return OK;
 }
 
 
@@ -64,7 +65,7 @@ int jpeg_buffer_attach_existing(struct jpeg_buffer* buf, struct jpeg_buffer* buf
 	CHECK_VALID(buf);
 	CHECK_HAS_ADDRESS(buf2);
 	if (buf->allocated || offset >= buf2->capacity)
-		return 1;
+		return INVALID_ARGUMENT;
 	
 	buf->allocated = 0;
 	buf->phyAddress = (char*)buf2->phyAddress + offset;
@@ -72,7 +73,7 @@ int jpeg_buffer_attach_existing(struct jpeg_buffer* buf, struct jpeg_buffer* buf
 	buf->capacity = buf2->capacity - offset;
 	buf->pmemFd = buf2->pmemFd;
 	buf->size = 0;
-	return 0;
+	return OK;
 }
 
 void jpeg_buffer_mark_busy(struct jpeg_buffer* buf)
@@ -135,18 +136,18 @@ void jpeg_buffer_destroy(struct jpeg_buffer** bufPtr)
 int jpeg_buffer_init(struct jpeg_buffer** bufPtr)
 {
 	if (!bufPtr)
-		return 3;
+		return BAD_HANDLE;
 	struct jpeg_buffer* buf = jpeg_malloc(sizeof(struct jpeg_buffer), __FILE__, __LINE__);
 	*bufPtr = buf;
 	if (!buf)
-		return 2;
+		return OUT_OF_MEMORY;
 	memset(buf, 0, sizeof(buf));
 	buf->pmemFd = -1;
 	buf->isValid = 1;
 	buf->isEmpty = 1;
 	os_mutex_init(&buf->lock);
 	os_cond_init(&buf->cond);
-	return 0;
+	return OK;
 }
 
 int jpeg_buffer_reset(struct jpeg_buffer* buf)
@@ -165,14 +166,14 @@ int jpeg_buffer_reset(struct jpeg_buffer* buf)
 	buf->phyAddress = NULL;
 	buf->capacity = 0;
 	buf->size = 0;
-	return 0;
+	return OK;
 }
 
 int jpeg_buffer_allocate(struct jpeg_buffer* buf, size_t size, int usePmem)
 {
 	CHECK_VALID(buf);
 	if (buf->address != NULL || size == 0) {
-		return 1;
+		return INVALID_ARGUMENT;
 	}
 	
 	if (usePmem) {
@@ -194,25 +195,25 @@ int jpeg_buffer_allocate(struct jpeg_buffer* buf, size_t size, int usePmem)
 	} else {
 		buf->address = jpeg_malloc(size, __FILE__, __LINE__);
 		if (!buf->address) {
-			return 2;
+			return OUT_OF_MEMORY;
 		}
 		buf->capacity = size;
 	}
 	buf->size = 0;
 	buf->allocated = 1;
-	return 0;
+	return OK;
 }
 
 int jpeg_buffer_use_external_buffer(struct jpeg_buffer* buf, void* address, size_t size, int pmemFd)
 {
 	CHECK_VALID(buf);
 	if (size == 0 || buf->allocated || address == 0)
-		return 1;
+		return INVALID_ARGUMENT;
 	
 	if (os_pmem_get_phy_addr(pmemFd, &buf->phyAddress) == 0) {
 		buf->pmemFd = pmemFd;
 	}
 	buf->address = address;
 	buf->capacity = size;
-	return 0;
+	return OK;
 }
